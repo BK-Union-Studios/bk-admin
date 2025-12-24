@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div id="announcement-overlay">
+        <span data-i18n="announcement_label">ANKÜNDIGUNG</span><br>
+        <div id="announcement-text"></div>
+    </div>
+
+    <div id="confirm-modal">
+        <h3 data-i18n="modal_title">Bist du sicher?</h3>
+        <p id="confirm-text">Möchtest du den Spieler wirklich bannen?</p>
+        <div class="modal-btns">
+            <button class="action-btn btn-yes" onclick="confirmAction(true)" data-i18n="btn_confirm">Ja, bannen</button>
+            <button class="action-btn btn-no" onclick="confirmAction(false)" data-i18n="btn_cancel">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="nui-notify">Erfolgreich ausgeführt!</div>
+
+    <div id="input-dialog">
+        <div class="input-header">
+            <div class="input-title" id="input-title">Eingabe</div>
+        </div>
+        <div class="input-body">
+            <input type="text" id="input-field" maxlength="200" placeholder="">
+            <div class="input-btns">
+                <button class="action-btn input-confirm" onclick="submitInput()" data-i18n="btn_confirm">Bestätigen</button>
+                <button class="action-btn input-cancel" onclick="cancelInput()" data-i18n="btn_cancel">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-wrapper" id="adminMenu">
+        <div class="header">
+            <div class="logo">ADMIN<span>PANEL</span></div>
+                <div class="nav-bar">
+                    <div class="nav-item active" data-tab="admin" data-i18n="tab_admin">Adminmodus</div>
+                    <div class="nav-item" data-tab="player" data-i18n="tab_player">Spieler</div>
+                    <div class="nav-item" data-tab="world" data-i18n="tab_world">Welt</div>
+                    <div class="nav-item" data-tab="server" data-i18n="tab_server">Server</div>
+                </div>
+        </div>
+        <div class="main-content">
+            <div class="tab-content active" id="admin">
+                <h2 data-i18n="header_admin">Admin Funktionen</h2>
+                <div id="adminMain" class="grid" style="max-height: 350px; overflow-y: auto;">
+                    <!-- Standalone quick actions (NoClip & Godmode) -->
+                    <div class="grid" style="margin-bottom: 8px;">
+                        <button class="action-btn" onclick="adminAction('noclip')" data-i18n="btn_noclip">NoClip AN/AUS</button>
+                        <button class="action-btn" onclick="adminAction('godmode')" data-i18n="btn_godmode">Godmode AN/AUS</button>
+                    </div>
+
+                    <!-- Category: Admin-Mode -->
+                    <div class="category">
+                        <div class="category-title" style="color: var(--primary); font-size: 12px; margin-top: 6px; text-transform: uppercase;" data-i18n="cat_admin">Admin-Modus</div>
+                        <div class="grid">
+                            <button id="superAdminBtn" class="action-btn" onclick="adminAction('superadmin')" data-i18n="btn_superadmin" style="display: none; border-color: #ff00ea; color: #ff00ea;">Super-Admin Modus</button>
+                            <button id="vanishingBtn" class="action-btn" onclick="adminAction('vanish')" data-i18n="btn_vanish" style="display: none; border-color: #555; color: #aaa;">Vanish Mode</button>
+                            <button class="action-btn" onclick="adminAction('visibility')" data-i18n="btn_visibility">Sichtbarkeit AN/AUS</button>
+                            <button class="action-btn" onclick="adminAction('showids')" data-i18n="btn_showids">Spieler IDs AN/AUS</button>
+                            <button class="action-btn" onclick="adminAction('duty')" data-i18n="btn_duty">Admin-Dienst</button>
+                            <button class="action-btn" onclick="adminAction('setdim')" data-i18n="btn_setdim">Dimension wechseln</button>
+                            <button class="action-btn" onclick="adminAction('revive')" data-i18n="btn_revive">Wiederbeleben</button>
+                        </div>
+                    </div>
+
+                    <!-- Category: Teleport /Movement -->
+                    <div class="category">
+                        <div class="category-title" style="color: var(--primary); font-size: 12px; margin-top: 6px; text-transform: uppercase;" data-i18n="cat_teleport">Teleport / Bewegung</div>
+                        <div class="grid">
+                            <button class="action-btn" onclick="adminAction('teleportwaypoint')" data-i18n="btn_telewaypoint">Zu Wegpunkt teleportieren</button>
+                            <button class="action-btn" onclick="openAdminSubmenu('telepresets')" data-i18n="btn_telepresets">Orte (Presets)</button>
+                            <button class="action-btn" onclick="adminAction('teleportcoords')" data-i18n="btn_telecoords">Zu Koordinaten teleportieren</button>
+                            <button class="action-btn" onclick="openAdminSubmenu('coordtype')" data-i18n="btn_copycoords">Koordinaten kopieren</button>
+                        </div>
+                    </div>
+
+                    <!-- Category: Spawn / Items -->
+                    <div class="category">
+                        <div class="category-title" style="color: var(--primary); font-size: 12px; margin-top: 6px; text-transform: uppercase;" data-i18n="cat_spawn">Spawn / Items</div>
+                        <div class="grid">
+                            <button class="action-btn" onclick="adminAction('spawnvehicle')" data-i18n="btn_spawnvehicle">Fahrzeug spawnen</button>
+                            <button class="action-btn" onclick="adminAction('spawnobject')" data-i18n="btn_spawnobject">Objekt spawnen</button>
+                            <button class="action-btn" onclick="openAdminSubmenu('itembrowser')" data-i18n="btn_itembrowser">Item Browser</button>
+                            <button class="action-btn" onclick="adminAction('giveallweapons')" data-i18n="btn_giveallweapons">Alle Waffen geben</button>
+                        </div>
+                    </div>
+
+                    <!-- Category: Vehicles -->
+                    <div class="category">
+                        <div class="category-title" style="color: var(--primary); font-size: 12px; margin-top: 6px; text-transform: uppercase;" data-i18n="cat_vehicle">Fahrzeug</div>
+                        <div class="grid">
+                            <button class="action-btn" onclick="adminAction('fix')" data-i18n="btn_fix">Auto Fix (Fix & Wash)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin category sub-pages -->
+                    <div id="adminModeSub" class="grid" style="display: none;">
+                    <h3 style="font-size:12px; text-transform:uppercase; color:var(--primary);" data-i18n="cat_admin">Admin-Modus</h3>
+                        <div class="grid" style="max-height:300px; overflow-y:auto; padding-right:5px;">
+                            <button class="action-btn" onclick="adminAction('visibility')" data-i18n="btn_visibility">Sichtbarkeit AN/AUS</button>
+                            <button class="action-btn" onclick="adminAction('showids')" data-i18n="btn_showids">Spieler IDs AN/AUS</button>
+                            <button class="action-btn" onclick="adminAction('duty')" data-i18n="btn_duty">Admin-Dienst</button>
+                            <button class="action-btn" onclick="adminAction('setdim')" data-i18n="btn_setdim">Dimension wechseln</button>
+                            <button class="action-btn" onclick="adminAction('revive')" data-i18n="btn_revive">Wiederbeleben</button>
+                        </div>
+                    
+                </div>
+
+                <div id="telePresetsSub" class="grid" style="display: none;">
+                    <div id="presetList" class="grid" style="max-height: 200px; overflow-y: auto;">
+                    </div>
+                    
+                </div>
+
+                <div id="coordTypeSub" class="grid" style="display: none;">
+                    <button class="action-btn" onclick="executeAdminAction('copycoords', 'v3')">vector3(x, y, z)</button>
+                    <button class="action-btn" onclick="executeAdminAction('copycoords', 'v4')">vector4(x, y, z, h)</button>
+                    
+                </div>
+
+                <div id="itemBrowserSub" class="grid" style="display: none;">
+                    <div id="itemList" class="grid" style="max-height: 300px; overflow-y: auto;">
+                    </div>
+                </div>
+
+                <div id="teleportSub" class="grid" style="display: none;">
+                    <h3 style="font-size:12px; text-transform:uppercase; color:var(--primary);" data-i18n="cat_teleport">Teleport / Bewegung</h3>
+                    <div class="grid" style="max-height:300px; overflow-y:auto; padding-right:5px;">
+                        <button class="action-btn" onclick="adminAction('teleportwaypoint')" data-i18n="btn_telewaypoint">Zu Wegpunkt teleportieren</button>
+                        <button class="action-btn" onclick="openAdminSubmenu('telepresets')" data-i18n="btn_telepresets">Orte (Presets)</button>
+                        <button class="action-btn" onclick="adminAction('teleportcoords')" data-i18n="btn_telecoords">Zu Koordinaten teleportieren</button>
+                        <button class="action-btn" onclick="openAdminSubmenu('coordtype')" data-i18n="btn_copycoords">Koordinaten kopieren</button>
+                    </div>
+                    
+                </div>
+
+                <div id="spawnSub" class="grid" style="display: none;">
+                    <h3 style="font-size:12px; text-transform:uppercase; color:var(--primary);" data-i18n="cat_spawn">Spawn / Items</h3>
+                    <div class="grid" style="max-height:300px; overflow-y:auto; padding-right:5px;">
+                        <button class="action-btn" onclick="adminAction('spawnvehicle')" data-i18n="btn_spawnvehicle">Fahrzeug spawnen</button>
+                        <button class="action-btn" onclick="adminAction('spawnobject')" data-i18n="btn_spawnobject">Objekt spawnen</button>
+                        <button class="action-btn" onclick="openAdminSubmenu('itembrowser')" data-i18n="btn_itembrowser">Item Browser</button>
+                        <button class="action-btn" onclick="adminAction('giveallweapons')" data-i18n="btn_giveallweapons">Alle Waffen geben</button>
+                    </div>
+                    
+                </div>
+
+                <div id="vehicleSub" class="grid" style="display: none;">
+                    <h3 style="font-size:12px; text-transform:uppercase; color:var(--primary);" data-i18n="cat_vehicle">Fahrzeug</h3>
+                    <div class="grid" style="max-height:300px; overflow-y:auto; padding-right:5px;">
+                        <button class="action-btn" onclick="adminAction('fix')" data-i18n="btn_fix">Auto Fix (Fix & Wash)</button>
+                    </div>
+                    
+                </div>
+            </div>
+            <div class="tab-content" id="player">
+                <h2 data-i18n="header_players">Spieler Liste</h2>
+                <div id="playerListWrapper">
+                    <div id="playerList" class="grid" style="max-height: 250px; overflow-y: auto;">
+                    </div>
+                </div>
+                <div id="playerActions" class="grid" style="display: none;">
+                    <h3 id="selectedPlayerName" style="font-size: 13px; text-align: center; color: #3A7CA5; margin-bottom: 5px;">Spieler Name</h3>
+                    <div id="playerInfoBox" style="background: #111; padding: 8px; border-radius: 4px; font-size: 10px; margin-bottom: 10px; border-left: 2px solid var(--primary); display: none;">
+                        <div id="infoRank">Rang: -</div>
+                        <div id="infoCID">CID: -</div>
+                        <div id="infoLastSeen">Zuletzt online: -</div>
+                    </div>
+                    <!-- Standard Actions -->
+                    <div id="playerActionsMain" class="grid">
+                        <div class="grid" style="max-height: 280px; overflow-y: auto; padding-right: 5px;">
+                            <button class="action-btn" onclick="executePlayerAction('goto')" data-i18n="btn_goto">Zu Spieler porten</button>
+                            <button class="action-btn" onclick="executePlayerAction('bring')" data-i18n="btn_bring">Spieler zu mir holen</button>
+                            <button id="rankBtn" class="action-btn" onclick="openPlayerSubmenu_Rank()" data-i18n="btn_setrank" style="display: none; border-color: gold; color: gold;">Rang vergeben</button>
+                            <button class="action-btn" onclick="openPlayerSubmenu_Notes()" data-i18n="btn_notes">Notizen</button>
+                            <button class="action-btn" onclick="executePlayerAction('setjob')" data-i18n="btn_setjob">Job ändern</button>
+                            <button class="action-btn" onclick="executePlayerAction('spectate')" data-i18n="btn_spectate">Beobachten</button>
+                            <button class="action-btn" onclick="executePlayerAction('freeze')" data-i18n="btn_freeze">Einfrieren</button>
+                            <button class="action-btn" onclick="executePlayerAction('inventory')" data-i18n="btn_inventory">Inventar öffnen</button>
+                            <button class="action-btn" onclick="executePlayerAction('heal')" data-i18n="btn_heal">Heilen</button>
+                            <button class="action-btn" onclick="executePlayerAction('revive')" data-i18n="btn_revive">Wiederbeleben</button>
+                            <button class="action-btn" onclick="executePlayerAction('kick')" data-i18n="btn_kick">Kicken</button>
+                            <button class="action-btn" onclick="executePlayerAction('ban')" data-i18n="btn_ban">Bannen</button>
+                            <button class="action-btn" onclick="executePlayerAction('privatemessage')" data-i18n="btn_privatemessage">Nachricht senden</button>
+                            <button class="action-btn" onclick="executePlayerAction('givemoney')" data-i18n="btn_givemoney">Geld geben</button>
+                            <button class="action-btn" onclick="executePlayerAction('removemoney')" data-i18n="btn_removemoney">Geld entziehen</button>
+                            <button class="action-btn" onclick="executePlayerAction('giveweapon')" data-i18n="btn_giveweapon">Waffe geben</button>
+                            <button class="action-btn" onclick="executePlayerAction('removeweapons')" data-i18n="btn_removeweapons">Waffen entziehen</button>
+                            <button class="action-btn" onclick="executePlayerAction('giveitem')" data-i18n="btn_giveitem">Item geben</button>
+                        </div>
+                        
+                    </div>
+
+                    <!-- Note: New Ban Duration Submenu -->
+                    <div id="playerBanDurationSub" class="grid" style="display: none;">
+                        <div id="banDurationList" class="grid" style="max-height: 200px; overflow-y: auto;">
+                        </div>
+                        <button class="action-btn" onclick="executePlayerAction('customban')" style="border-color: #ff00ea;" data-i18n="btn_custom_ban">Eigene Dauer/Datum</button>
+                        
+                    </div>
+
+                    <!-- Note: New Ban Reason Submenu -->
+                    <div id="playerBanReasonSub" class="grid" style="display: none;">
+                        <div id="banReasonList" class="grid" style="max-height: 200px; overflow-y: auto;">
+                        </div>
+                        <button class="action-btn" onclick="executePlayerAction('customreason')" style="border-color: #ff00ea;" data-i18n="btn_custom_reason">Eigener Grund</button>
+                        
+                    </div>
+
+                    <!-- Rank Submenu -->
+                <div id="playerRankSub" class="grid" style="display: none;">
+                    <button class="action-btn" onclick="executePlayerAction('setrank', 'user')">User (Remove)</button>
+                    <button class="action-btn" onclick="executePlayerAction('setrank', 'admin')" style="color: var(--primary);">Admin</button>
+                    <button class="action-btn" onclick="executePlayerAction('setrank', 'god')" style="color: gold;">God</button>
+                    
+                </div>
+
+                    <!-- Notes Submenu -->
+                    <div id="playerNotesSub" class="grid" style="display: none;">
+                        <button class="action-btn" onclick="executePlayerAction('addnote')" data-i18n="btn_add_note">+ Notiz hinzufügen</button>
+                        <div id="notesList" class="grid" style="max-height: 200px; overflow-y: auto; margin-top: 5px; font-size: 11px; border-top: 1px solid #222; padding-top: 5px;">
+                        </div>
+                        <button class="save-btn" onclick="backToPlayerActionsMain()" style="background: #444;" data-i18n="btn_back">Zurück</button>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-content" id="world">
+                <h2 data-i18n="header_world">Welt</h2>
+                
+                <div id="worldMain" class="grid">
+                    <button class="action-btn" onclick="openWorldSubmenu('weather')" data-i18n="btn_change_weather">Wetter ändern</button>
+                    <button class="action-btn" onclick="openWorldSubmenu('time')" data-i18n="btn_change_time">Zeit ändern</button>
+                    <button class="action-btn" onclick="adminAction('blackout')" data-i18n="btn_blackout">Blackout</button>
+                    <button class="action-btn" onclick="openWorldSubmenu('waves')" data-i18n="btn_waves">Wellen</button>
+                    <button class="action-btn" onclick="openWorldSubmenu('density')" data-i18n="btn_npc_density">NPC Dichte</button>
+                </div>
+
+                <div id="weatherSub" class="grid" style="display: none;">
+                    <div id="weatherList" class="grid" style="max-height: 200px; overflow-y: auto;">
+                    </div>
+                    
+                </div>
+
+                <div id="timeSub" class="grid" style="display: none;">
+                    <div id="timeList" class="grid" style="max-height: 200px; overflow-y: auto;">
+                    </div>
+                    
+                </div>
+
+                <div id="wavesSub" class="grid" style="display: none;">
+                    <div class="grid">
+                        <button class="action-btn" onclick="executeWorldAction('waves', 0.0)" data-i18n="waves_normal">Normal</button>
+                        <button class="action-btn" onclick="executeWorldAction('waves', 3.0)" data-i18n="waves_medium">Mittel</button>
+                        <button class="action-btn" onclick="executeWorldAction('waves', 10.0)" data-i18n="waves_high">Hoch</button>
+                        <button class="action-btn" onclick="executeWorldAction('waves', 50.0)" data-i18n="waves_extreme">Extrem</button>
+                    </div>
+                    
+                </div>
+
+                <div id="densitySub" class="grid" style="display: none;">
+                    <div class="grid">
+                        <button class="action-btn" onclick="executeWorldAction('density', 0.0)" data-i18n="density_off">Aus (0%)</button>
+                        <button class="action-btn" onclick="executeWorldAction('density', 0.2)" data-i18n="density_low">Niedrig (20%)</button>
+                        <button class="action-btn" onclick="executeWorldAction('density', 0.5)" data-i18n="density_medium">Mittel (50%)</button>
+                    </div>
+                    
+                </div>
+            </div>
+            <div class="tab-content" id="server">
+                <h2 data-i18n="header_server">Server Verwaltung</h2>
+                <div id="serverMain" class="grid">
+                    <button class="action-btn" onclick="adminAction('announce')" data-i18n="btn_announce">Globale Ankündigung</button>
+                    <button class="action-btn" onclick="adminAction('massheal')" data-i18n="btn_massheal">Massen Heilung (Alle)</button>
+                    <button class="action-btn" onclick="adminAction('masstele')" data-i18n="btn_masstele">Massen Teleport (Alle)</button>
+                    <button class="action-btn" onclick="openServerSubmenu('banlist')" data-i18n="btn_banlist">Ban Liste</button>
+                    <p style="font-size: 11px; text-align: center; margin-top: 10px; color: #666;">Steuerung: Pfeiltasten & Enter</p>
+                </div>
+
+                <!-- Ban List Submenu -->
+                <div id="banListSub" class="grid" style="display: none;">
+                    <div id="banList" class="grid" style="max-height: 250px; overflow-y: auto;">
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="ui.js"></script>
+</body>
+</html>
