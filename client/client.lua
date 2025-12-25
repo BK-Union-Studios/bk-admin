@@ -40,7 +40,7 @@ local function updateNuiFocus()
     -- Show cursor only while input dialog is active. Keep keyboard input when menu is open.
     local wantFocus = display or inputActive
     SetNuiFocus(wantFocus, inputActive)
-    SetNuiFocusKeepInput(wantFocus and not inputActive)
+    SetNuiFocusKeepInput(wantFocus and not inputActive)  -- Only keep input when menu is open, NOT when input dialog is active
 end
 local pendingInputCallback = nil
 local pendingInputData = nil
@@ -544,6 +544,20 @@ RegisterNUICallback("adminAction", function(data, cb)
                 end, nil, "", 200, "")
             end
         end, nil, "", 30, "")
+    elseif data.action == "tunebackend_performance" then
+        local v = GetVehiclePedIsIn(playerPed, false)
+        if v ~= 0 then
+            tuneVehiclePerformance(v)
+        else
+            SendNUIMessage({ type = "notify", msg = "Du sitzt in keinem Fahrzeug" })
+        end
+    elseif data.action == "tunebackend_cosmetics" then
+        local v = GetVehiclePedIsIn(playerPed, false)
+        if v ~= 0 then
+            tuneVehicleCosmetics(v)
+        else
+            SendNUIMessage({ type = "notify", msg = "Du sitzt in keinem Fahrzeug" })
+        end
     elseif data.action == "spawnvehicle" then
         OpenInput(L('kb_veh'), function(model)
             if model and model ~= "" then
@@ -701,6 +715,54 @@ function spawnVehicle(model)
     SetEntityAsMissionEntity(vehicle, true, true)
     SetModelAsNoLongerNeeded(hash)
     TriggerServerEvent('bk_admin:logAdminAction', 'Spawn Vehicle', 'spawned vehicle: ' .. model)
+end
+
+local function ensureModKit(vehicle)
+    if GetVehicleModKit(vehicle) ~= 0 then
+        SetVehicleModKit(vehicle, 0)
+    end
+end
+
+function tuneVehiclePerformance(vehicle)
+    ensureModKit(vehicle)
+    local perfMods = {11, 12, 13, 15, 16} -- engine, brakes, transmission, suspension, armor
+    for _, modType in ipairs(perfMods) do
+        local max = GetNumVehicleMods(vehicle, modType)
+        if max and max > 0 then
+            SetVehicleMod(vehicle, modType, max - 1, false)
+        end
+    end
+    ToggleVehicleMod(vehicle, 18, true) -- turbo
+    SetVehicleMod(vehicle, 14, -1, false) -- horn back to stock
+    SetVehicleMod(vehicle, 22, 0, false) -- lights mod stock (avoid odd behavior)
+    SendNUIMessage({ type = "notify", msg = "Performance auf MAX" })
+    TriggerServerEvent('bk_admin:logAdminAction', 'Tune Performance', 'max tuned current vehicle')
+end
+
+function tuneVehicleCosmetics(vehicle)
+    ensureModKit(vehicle)
+    -- Cosmetic mod types (skip performance 11,12,13,15,16 and turbo 18)
+    local cosmeticMods = {0,1,2,3,4,5,6,7,8,9,10,14,17,19,20,21,23,24,25}
+    for _, modType in ipairs(cosmeticMods) do
+        local max = GetNumVehicleMods(vehicle, modType)
+        if max and max > 0 then
+            local pick = math.random(0, max) -- 0 means stock (-1)
+            local modIndex = (pick == 0) and -1 or (pick - 1)
+            SetVehicleMod(vehicle, modType, modIndex, modType == 23 or modType == 24) -- wheels need custom flag
+        end
+    end
+    -- Random paint
+    local primary = math.random(0, 160)
+    local secondary = math.random(0, 160)
+    SetVehicleColours(vehicle, primary, secondary)
+    local pearlescent = math.random(0, 160)
+    local wheelColor = math.random(0, 160)
+    SetVehicleExtraColours(vehicle, pearlescent, wheelColor)
+    -- Random window tint where possible
+    local tintOptions = {0,1,2,3,4,5}
+    SetVehicleWindowTint(vehicle, tintOptions[math.random(#tintOptions)])
+    SendNUIMessage({ type = "notify", msg = "Kosmetik randomisiert" })
+    TriggerServerEvent('bk_admin:logAdminAction', 'Tune Cosmetics', 'randomized vehicle cosmetics')
 end
 
 function deleteObject()
@@ -871,6 +933,7 @@ RegisterNetEvent('bk_admin:clientAction', function(action, data)
         NetworkResurrectLocalPlayer(GetEntityCoords(playerPed), GetEntityHeading(playerPed), true, false)
         SetEntityHealth(playerPed, 200)
     elseif action == "freeze" then
+        -- Toggle freeze on self
         local playerPed = PlayerPedId()
         FreezeEntityPosition(playerPed, not IsEntityPositionFrozen(playerPed))
     elseif action == "spectate" then
