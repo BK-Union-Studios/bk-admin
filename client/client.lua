@@ -33,12 +33,14 @@ local selectedBanDuration = ""
 local hasSyncedTime = false
 local lastTimeSync = 0
 local inputActive = false
+local frozenPlayers = {}  -- Track frozen state of other players
+local spawnedObjects = {}  -- Track spawned objects for deletion
 
 local function updateNuiFocus()
     -- Show cursor only while input dialog is active. Keep keyboard input when menu is open.
     local wantFocus = display or inputActive
     SetNuiFocus(wantFocus, inputActive)
-    SetNuiFocusKeepInput(wantFocus)
+    SetNuiFocusKeepInput(wantFocus and not inputActive)
 end
 local pendingInputCallback = nil
 local pendingInputData = nil
@@ -54,6 +56,8 @@ end
 function OpenInput(title, callback, callbackData, defaultText, maxLength, placeholder)
     pendingInputCallback = callback
     pendingInputData = callbackData
+    inputActive = true
+    updateNuiFocus()
     SendNUIMessage({
         action = 'openInput',
         data = {
@@ -81,9 +85,18 @@ Citizen.CreateThread(function()
     while true do
         if display then
             if inputActive then
-                -- Hard lock controls while input is open
+                -- HARD LOCK ALL CONTROLS while input dialog is active
                 DisableAllControlActions(0)
+                DisableAllControlActions(1)
+                DisableAllControlActions(2)
+                -- Triple-lock the most problematic keys
+                for i = 0, 221 do
+                    DisableControlAction(0, i, true)
+                    DisableControlAction(1, i, true)
+                    DisableControlAction(2, i, true)
+                end
             else
+                -- Only disable specific controls while menu is open (not input)
                 DisableControlAction(0, 142, true) -- Melee
                 DisableControlAction(0, 106, true) -- Vehicle Mouse Control
                 DisableControlAction(0, 24, true) -- Attack
@@ -184,11 +197,11 @@ Citizen.CreateThread(function()
             SetEntityCanBeDamaged(playerPed, false)
             SetEntityHealth(playerPed, 200)
 
-            -- Mouse wheel speed control
-            if IsControlJustPressed(0, 15) then 
+            -- Mouse wheel speed control (241=scroll up, 242=scroll down)
+            if IsControlJustPressed(0, 241) then 
                 noclipSpeed = math.min(noclipSpeed + (Config.NoClip.SpeedStep or 0.5), Config.NoClip.MaxSpeed)
                 if Config.NoClip.ShowSpeedNotify then SendNUIMessage({ type = "notify", msg = "Speed: " .. noclipSpeed }) end
-            elseif IsControlJustPressed(0, 16) then 
+            elseif IsControlJustPressed(0, 242) then 
                 noclipSpeed = math.max(noclipSpeed - (Config.NoClip.SpeedStep or 0.5), 0.05)
                 if Config.NoClip.ShowSpeedNotify then SendNUIMessage({ type = "notify", msg = "Speed: " .. noclipSpeed }) end
             end
@@ -197,12 +210,15 @@ Citizen.CreateThread(function()
             local dx, dy, dz = getCamDirection()
             local h = GetGameplayCamRelativeHeading() + GetEntityHeading(playerPed)
             local rdx, rdy = math.cos(math.rad(h)), math.sin(math.rad(h))
+            
+            -- Hold SHIFT (21) to temporarily double speed
+            local effectiveSpeed = noclipSpeed * (IsControlPressed(0, 21) and 2.0 or 1.0)
 
-            if IsControlPressed(0, 32) then x, y, z = x + noclipSpeed * dx, y + noclipSpeed * dy, z + noclipSpeed * dz end
-            if IsControlPressed(0, 33) then x, y, z = x - noclipSpeed * dx, y - noclipSpeed * dy, z - noclipSpeed * dz end
-            if IsControlPressed(0, 34) then x = x - noclipSpeed * rdx; y = y - noclipSpeed * rdy end
-            if IsControlPressed(0, 35) then x = x + noclipSpeed * rdx; y = y + noclipSpeed * rdy end
-            if IsControlPressed(0, 44) then z = z + noclipSpeed end -- Q
+            if IsControlPressed(0, 32) then x, y, z = x + effectiveSpeed * dx, y + effectiveSpeed * dy, z + effectiveSpeed * dz end
+            if IsControlPressed(0, 33) then x, y, z = x - effectiveSpeed * dx, y - effectiveSpeed * dy, z - effectiveSpeed * dz end
+            if IsControlPressed(0, 34) then x = x - effectiveSpeed * rdx; y = y - effectiveSpeed * rdy end
+            if IsControlPressed(0, 35) then x = x + effectiveSpeed * rdx; y = y + effectiveSpeed * rdy end
+            if IsControlPressed(0, 44) then z = z + effectiveSpeed end -- Q
             if IsControlPressed(0, 38) then z = z - noclipSpeed end -- E
 
             SetEntityCoordsNoOffset(playerPed, x, y, z, true, true, true)
@@ -390,6 +406,8 @@ RegisterNUICallback("adminAction", function(data, cb)
                 spawnObject(model)
             end
         end, nil, "", 50, "prop_bench_01a")
+    elseif data.action == "deleteobject" then
+        deleteObject()
     elseif data.action == "massheal" then
         TriggerServerEvent('bk_admin:massAction', 'massheal')
     elseif data.action == "masstele" then
@@ -414,6 +432,21 @@ RegisterNUICallback("adminAction", function(data, cb)
             if Config.Vehicles.MaxFuelOnSpawn then exports['LegacyFuel']:SetFuel(v, 100.0) end
             SendNUIMessage({ type = "notify", msg = "Fahrzeug repariert & gewaschen" })
             TriggerServerEvent('bk_admin:logAdminAction', 'Fix Vehicle', 'repaired current vehicle')
+        end
+    elseif data.action == "deletevehicle" then
+        local v = GetVehiclePedIsIn(playerPed, false)
+        if v ~= 0 then
+            if GetPedInVehicleSeat(v, -1) == playerPed then
+                local plate = GetVehicleNumberPlateText(v)
+                SetEntityAsMissionEntity(v, true, true)
+                DeleteVehicle(v)
+                SendNUIMessage({ type = "notify", msg = "Fahrzeug gelöscht" })
+                TriggerServerEvent('bk_admin:logAdminAction', 'Delete Vehicle', 'deleted vehicle plate '.. tostring(plate))
+            else
+                SendNUIMessage({ type = "notify", msg = "Du musst Fahrer sein" })
+            end
+        else
+            SendNUIMessage({ type = "notify", msg = "Du sitzt nicht im Fahrzeug" })
         end
     elseif data.action == "telepreset" then
         local preset = Config.TeleportPresets[data.data.cat][data.data.id + 1]
@@ -494,23 +527,6 @@ RegisterNUICallback("adminAction", function(data, cb)
                 end
             end
         end, nil, "", 100, "x, y, z")
-    elseif data.action == "giveallweapons" then
-        local weapons = {
-            "WEAPON_PISTOL", "WEAPON_COMBATPISTOL", "WEAPON_APPISTOL", "WEAPON_PISTOL50",
-            "WEAPON_MICROSMG", "WEAPON_SMG", "WEAPON_ASSAULTSMG", "WEAPON_COMBATPDW",
-            "WEAPON_CARBINERIFLE", "WEAPON_ASSAULTRIFLE", "WEAPON_ADVANCEDRIFLE", "WEAPON_SPECIALCARBINE",
-            "WEAPON_PUMPSHOTGUN", "WEAPON_SAWNOFFSHOTGUN", "WEAPON_ASSAULTSHOTGUN", "WEAPON_BULLPUPSHOTGUN",
-            "WEAPON_SNIPERRIFLE", "WEAPON_HEAVYSNIPER", "WEAPON_MARKSMANRIFLE",
-            "WEAPON_GRENADE", "WEAPON_STICKYBOMB", "WEAPON_MOLOTOV"
-        }
-        for _, w in ipairs(weapons) do 
-            local hash = GetHashKey(w)
-            GiveWeaponToPed(playerPed, hash, 999, false, false) 
-            SetPedInfiniteAmmo(playerPed, true, hash)
-            SetPedInfiniteAmmoClip(playerPed, true)
-        end
-        SendNUIMessage({ type = "notify", msg = "Alle Waffen + Munition gegeben" })
-        TriggerServerEvent('bk_admin:logAdminAction', 'Give All Weapons', 'gave all weapons to self')
     elseif data.action == "blackout" then
         TriggerServerEvent('bk_admin:blackout')
     elseif data.action == "announce" then
@@ -665,6 +681,7 @@ function spawnObject(model)
     local obj = CreateObject(hash, objCoords.x, objCoords.y, objCoords.z, true, true, false)
     PlaceObjectOnGroundProperly(obj)
     SetModelAsNoLongerNeeded(hash)
+    table.insert(spawnedObjects, obj)
     TriggerServerEvent('bk_admin:logAdminAction', 'Spawn Object', 'spawned object: ' .. model)
 end
 
@@ -684,6 +701,40 @@ function spawnVehicle(model)
     SetEntityAsMissionEntity(vehicle, true, true)
     SetModelAsNoLongerNeeded(hash)
     TriggerServerEvent('bk_admin:logAdminAction', 'Spawn Vehicle', 'spawned vehicle: ' .. model)
+end
+
+function deleteObject()
+    if #spawnedObjects == 0 then
+        SendNUIMessage({ type = "notify", msg = "Keine gespawnten Objekte vorhanden" })
+        return
+    end
+    
+    local playerPed = PlayerPedId()
+    local playerPos = GetEntityCoords(playerPed)
+    local closestDist = 100
+    local closestIndex = nil
+    
+    for i, objHandle in ipairs(spawnedObjects) do
+        if DoesEntityExist(objHandle) then
+            local objPos = GetEntityCoords(objHandle)
+            local dist = #(playerPos - objPos)
+            if dist < closestDist then
+                closestDist = dist
+                closestIndex = i
+            end
+        end
+    end
+    
+    if closestIndex then
+        local obj = spawnedObjects[closestIndex]
+        SetEntityAsMissionEntity(obj, true, true)
+        DeleteEntity(obj)
+        table.remove(spawnedObjects, closestIndex)
+        SendNUIMessage({ type = "notify", msg = "Objekt gelöscht" })
+        TriggerServerEvent('bk_admin:logAdminAction', 'Delete Object', 'deleted spawned object')
+    else
+        SendNUIMessage({ type = "notify", msg = "Kein Objekt in der Nähe" })
+    end
 end
 
 RegisterNUICallback("getPlayers", function(data, cb)
@@ -817,13 +868,11 @@ RegisterNetEvent('bk_admin:clientAction', function(action, data)
         SetPlayerMaxArmour(PlayerId(), 100)
         SetPedArmour(playerPed, 100)
     elseif action == "revive" then
-        -- In QBX/QB-Core, revive is usually handled via an event (hospital:client:Revive)
-        -- We keep local logic as a fallback
         NetworkResurrectLocalPlayer(GetEntityCoords(playerPed), GetEntityHeading(playerPed), true, false)
         SetEntityHealth(playerPed, 200)
     elseif action == "freeze" then
-        local frozen = not IsEntityStatic(playerPed)
-        FreezeEntityPosition(playerPed, frozen)
+        local playerPed = PlayerPedId()
+        FreezeEntityPosition(playerPed, not IsEntityPositionFrozen(playerPed))
     elseif action == "spectate" then
         if not isSpectating then
             local targetPed = GetPlayerPed(GetPlayerFromServerId(data))
@@ -836,13 +885,8 @@ RegisterNetEvent('bk_admin:clientAction', function(action, data)
             spectateTarget = nil
         end
     elseif action == "inventory" then
-        -- Open QBX/QB-Core inventory for another player from admin
-        -- Expect data = { type = 'player', id = targetId }
-        if data and data.id then
-            local invType = data.type or 'otherplayer'
-            TriggerServerEvent('inventory:server:OpenInventory', invType, data.id)
-            TriggerEvent('inventory:client:OpenInventory', invType, data.id)
-        end
+        -- Inventory opening is handled by server-side trigger now
+        -- Nothing to do on client
     elseif action == "giveweapon" then
         GiveWeaponToPed(playerPed, GetHashKey(data), 250, false, true)
     elseif action == "removeweapons" then
@@ -941,8 +985,11 @@ end)
 
 local isVanished = false
 
-RegisterNetEvent('bk_admin:syncGodStatus', function(state, items)
+RegisterNetEvent('bk_admin:syncGodStatus', function(state)
     isGod = state
+end)
+
+RegisterNetEvent('bk_admin:receiveItems', function(items)
     if items then SendNUIMessage({ type = "items", items = items }) end
 end)
 
