@@ -84,10 +84,9 @@
                     <div class="category">
                         <div class="category-title" style="color: var(--primary); font-size: 12px; margin-top: 6px; text-transform: uppercase;" data-i18n="cat_spawn">Spawn / Items</div>
                         <div class="grid">
-                            <button class="action-btn" onclick="adminAction('spawnvehicle')" data-i18n="btn_spawnvehicle">Fahrzeug spawnen</button>
                             <button class="action-btn" onclick="adminAction('spawnobject')" data-i18n="btn_spawnobject">Objekt spawnen</button>
+                            <button class="action-btn" onclick="adminAction('deleteobject')" data-i18n="btn_deleteobject">Objekt löschen</button>
                             <button class="action-btn" onclick="openAdminSubmenu('itembrowser')" data-i18n="btn_itembrowser">Item Browser</button>
-                            <button class="action-btn" onclick="adminAction('giveallweapons')" data-i18n="btn_giveallweapons">Alle Waffen geben</button>
                         </div>
                     </div>
 
@@ -95,7 +94,9 @@
                     <div class="category">
                         <div class="category-title" style="color: var(--primary); font-size: 12px; margin-top: 6px; text-transform: uppercase;" data-i18n="cat_vehicle">Fahrzeug</div>
                         <div class="grid">
+                            <button class="action-btn" onclick="adminAction('spawnvehicle')" data-i18n="btn_spawnvehicle">Fahrzeug spawnen</button>
                             <button class="action-btn" onclick="adminAction('fix')" data-i18n="btn_fix">Auto Fix (Fix & Wash)</button>
+                            <button class="action-btn" onclick="confirmDeleteVehicle()" data-i18n="btn_deletevehicle">Fahrzeug löschen</button>
                         </div>
                     </div>
                 </div>
@@ -143,11 +144,11 @@
 
                 <div id="spawnSub" class="grid" style="display: none;">
                     <h3 style="font-size:12px; text-transform:uppercase; color:var(--primary);" data-i18n="cat_spawn">Spawn / Items</h3>
+                    <button class="action-btn" onclick="adminAction('deleteobject')" data-i18n="btn_deleteobject">Objekt löschen</button>
                     <div class="grid" style="max-height:300px; overflow-y:auto; padding-right:5px;">
                         <button class="action-btn" onclick="adminAction('spawnvehicle')" data-i18n="btn_spawnvehicle">Fahrzeug spawnen</button>
                         <button class="action-btn" onclick="adminAction('spawnobject')" data-i18n="btn_spawnobject">Objekt spawnen</button>
                         <button class="action-btn" onclick="openAdminSubmenu('itembrowser')" data-i18n="btn_itembrowser">Item Browser</button>
-                        <button class="action-btn" onclick="adminAction('giveallweapons')" data-i18n="btn_giveallweapons">Alle Waffen geben</button>
                     </div>
                     
                 </div>
@@ -155,7 +156,9 @@
                 <div id="vehicleSub" class="grid" style="display: none;">
                     <h3 style="font-size:12px; text-transform:uppercase; color:var(--primary);" data-i18n="cat_vehicle">Fahrzeug</h3>
                     <div class="grid" style="max-height:300px; overflow-y:auto; padding-right:5px;">
+                        <button class="action-btn" onclick="adminAction('spawnvehicle')" data-i18n="btn_spawnvehicle">Fahrzeug spawnen</button>
                         <button class="action-btn" onclick="adminAction('fix')" data-i18n="btn_fix">Auto Fix (Fix & Wash)</button>
+                        <button class="action-btn" onclick="confirmDeleteVehicle()" data-i18n="btn_deletevehicle">Fahrzeug löschen</button>
                     </div>
                     
                 </div>
