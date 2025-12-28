@@ -28,6 +28,11 @@ files {
     'html/ui.js',
 }
 
+escrow_ignore {
+    'config.lua',       
+    'locales/*.lua',      
+}
+
 dependencies {
     'qbx_core',
     'oxmysql'
