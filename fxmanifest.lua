@@ -30,7 +30,7 @@ files {
 
 escrow_ignore {
     'config.lua',       
-    'locales/*.lua',      
+    'locales/*.lua'     
 }
 
 dependencies {
